@@ -1,0 +1,563 @@
+Abstract—Function as a Service (FaaS) is poised to become
+ the foundation of the next generation of cloud systems due to its
+ inherent advantages in scalability, cost-efficiency, and ease of use.
+ However, challenges such as the need for specialized knowledge
+ and difficulties in building function workflows persist for cloud
+native application developers. To overcome these challenges and
+ mitigate the burden of developing FaaS-based applications, in this
+ paper, we propose a mechanism called Action Engine, that makes
+ use of Tool-Augmented Large Language Models (LLMs) at its
+ kernel to interpret human language queries and automates FaaS
+ workflow generation, thereby, reducing the need for specialized
+ expertise and manual design. Action Engine includes modules
+ to identify relevant functions from the FaaS repository and
+ seamlessly manage the data dependency between them, ensuring
+ that the developer’s query is processed and resolved. Beyond
+ that, Action Engine can execute the generated workflow by
+ feeding the user-provided parameters. Our evaluations show that
+ Action Engine can generate workflows with up to 20% higher
+ correctness without developer involvement. We notice that Action
+ Engine can unlock FaaS workflow generation for non-cloud-savvy
+ developers and expedite the development cycles of cloud-native
+ applications.
+ I. INTRODUCTION
+ A. Function as a Service (FaaS)
+ FaaS is a cloud computing paradigm that allows developers
+ to execute code in response to events without managing
+ the underlying infrastructure, providing scalability and cost
+ efficiency [2]. This model abstracts away the complexities
+ of infrastructure management, thereby enabling developers to
+ concentrate on writing and deploying code triggered by spe
+cific events. As a result, FaaS enhances operational efficiency
+ and accelerates cloud-native software development cycles. A
+ key component of FaaS is its workflow orchestration, which
+ enables the developer to orchestrate multiple functions to
+ serve complex tasks by using high-level API. In cloud-native
+ software development and Robotic Process Automation (RPA)
+ [6], FaaS workflows are essential to automate repetitive or
+ complex tasks, hence improving efficiency and accuracy.
+ FaaS is expected to be the foundation of the next generation
+ of cloud systems [1] that mitigates the burden of cloud
+native application development and enables developers to
+ focus solely on the application and business logic rather than
+ dealing with the resource allocation complexities. Major cloud
+ providers have already adopted the FaaS paradigm, e.g., AWS
+ Lambda, Google Cloud Functions, and Azure Functions. These
+ hyper-scalers also provide various tools for workflow creation
+ and orchestration, e.g., AWS Step Functions, Google Cloud
+ Composer, and Azure Durable Functions.
+ B. Limitations of FaaS Workflow Tools
+ Despite the advancements in FaaS platforms, developers still
+ face several challenges that make developing FaaS workflows
+ knowledge-demanding and time-consuming. We summarize
+ these limitations as follows:
+ 1) Specialized Knowledge Requirement: Designing and
+ implementing FaaS workflows requires expertise in each
+ platform-specific language and configuration. For in
+stance, AWS Step Functions demand familiarity with
+ Amazon States Language (ASL), and Google Cloud
+ Composer necessitates knowledge of Python and Airflow.
+ These steep learning curves are significant barriers for
+ new developers in serverless cloud computing.
+ 2) Scalability Challenge: Effective scaling of FaaS work
+f
+ lows demands a comprehensive understanding of ex
+isting functions to avoid redundancy and system flaws.
+ As the function repository of an organization grows,
+ the number of functions within it increases, leading to
+ greater complexity that developers must learn to manage.
+ New developers, in particular, must comprehend these
+ intricacies to modify or create new workflows effectively.
+ This complexity hinders the seamless adoption and exten
+sion of workflows, impacting the system’s flexibility and
+ responsiveness as it grows.
+ 3) Increasing Development Time: Current FaaS workflow
+ development relies heavily on manual coding, which
+ is inefficient for large FaaS repositories. This reliance
+ significantly increases the development time, making it
+ challenging to adapt and respond quickly to new or
+ changed requirements.
+ C. FaaS Workflow Generation via LLM
+ To address these challenges, we propose leveraging Tool
+Augmented Large Language Models (LLMs) [11] to enhance
+ FaaS workflow generation. Tool-augmented LLMs can inter
+pret human language and interact with various tools, such
+ as APIs, to automatically create and modify workflows. This
+ approach reduces the need for specialized knowledge and
+ manual workflow design, enabling dynamic and scalable FaaS
+ workflow generation.
+ Existing studies on Tool-Augmented LLMs primarily focus
+ on parameter extraction from user queries and the execution of
+ workflows, often overlooking critical aspects such as data flow
+ (aka data dependency management). In the context of FaaS,
+ data flow refers to the seamless transmission and transfor
+mation of data between various functions within a workflow.
+(1)
+ Query
+ (3)
+ Developer
+ Text-to-Workflow
+ (2)
+ (4)
+ LLM
+ Workflow
+ Config
+ API Endpoint
+ Application
+ Workflow 
+Executor
+ Action Engine
+ FaaS
+ Fig. 1: The high-level overview of Action Engine. The devel
+oper submits the workflow description for the Action Engine
+ to automatically generate the workflow and return it with the
+ ready-to-use API endpoint backed by the FaaS platform and
+ workflow orchestrator.
+ Ensuring correct data flow is crucial for maintaining work
+f
+ low integrity and efficiency. Without proper data dependency
+ management, data can become misrouted or corrupted, leading
+ to system failures or inefficiencies. In the worst case, this can
+ result in incorrect outputs, data loss, and significant downtime,
+ ultimately affecting the reliability and performance of the
+ entire application.
+ Another important consideration is language-dependence.
+ Existing studies (see Section II) usually generate the workflow
+ directly into the code or a platform-specific language, which
+ introduces platform dependence. Such dependence carries the
+ risk of incompatibility upon the application programming
+ interface (API) evolution. For example, the workflow code
+ generated by the LLM may rely on runtime version 1, while
+ the developer’s environment may be using a different runtime
+ version (e.g., version 2). Additionally, the LLM may produce
+ inaccurate results (or “hallucinate”) when tasked with working
+ in a language or platform on which it has not been extensively
+ trained.
+ To overcome the aforementioned challenges, we design
+ Action Engine that, as shown in Figure 1), is an end-to-end
+ system for automatic FaaS workflow generation. Action En
+gine uses LLM to generate a platform-agnostic FaaS directed
+ acyclic graph (DAG) workflow. To ensure the correctness
+ of data interaction between sub-tasks (aka nodes), Action
+ Engine includes the data dependency module that constructs
+ the data flow graph between sub-tasks. Subsequently, the
+ generated DAG workflow is compiled to the specific format
+ and configuration of the chosen FaaS cloud platform. To make
+ the workflow executable, as seen in Figure 1, Action Engine
+ registers the compiled workflow into the FaaS workflow execu
+tor (aka workflow orchestrator). Finally, it provides users only
+ the high-level API endpoint to execute the workflow, enabling
+ rapid and scalable FaaS workflow generation.
+ The key contributions of this paper are summarized as
+ follows:
+ 1) Architecture for Automatic FaaS Workflow Genera
+tion: We designed and open-sourced1 a framework that
+ leverages Tool-Augmented LLMs to generate FaaS work
+1https://github.com/hpcclab/action engine
+ f
+ lows automatically. This system reduces the need for
+ specialized knowledge and manual intervention, making
+ the generation, management, and execution of workflows
+ easier.
+ 2) Novel Data Dependency Management Strategy: We
+ propose a new LLM-based strategy for constructing and
+ managing data dependency between workflow nodes.
+ This approach ensures seamless data flow and correct
+ sequencing of functions—maintaining workflow integrity
+ and efficiency.
+ 3) Platform-Independent Workflow Generation: The
+ proposed architecture can generate platform/cloud
+independent workflows that can be later compiled to any
+ underlying cloud platform or even potentially to functions
+ across multiple clouds.
+ These contributions aim to make FaaS workflows easier and
+ faster to develop, efficient, and adaptable—paving the way for
+ democratizing cloud-native application development. The rest
+ of the paper is organized as follows: In Section II, we introduce
+ the details and issues of the current approach in generating the
+ workflow with LLMs. We show the design of Action Engine
+ to resolve these issues in Section III and with more details
+ in Sections IV and V. We evaluate Action Engine’s accuracy
+ in generating workflow in multiple dimensions in Section VI.
+ We discuss the limitation of this paper in Section VII. Finally,
+ we summarize the paper in Section VIII.
+ II. BACKGROUND AND RELATED WORKS
+ A. Tool-Augmented LLM
+ Tool-Augmented LLMs are an emerging area of interest
+ aimed at enhancing the ability of LLMs to interact effectively
+ with various tools, such as APIs, thereby demonstrating their
+ impressive capability to solve real-world tasks.
+ Although the definition of “tool” often remains vague and
+ inconsistent across different studies, many notable existing
+ works in this field employ the tool as a set of external
+ functionality accessible by APIs [7], [9], [10], [13], [14],
+ [16]. We adopt this definition, treating tools as APIs. In
+ the context of FaaS, we utilize FaaS functions, which are
+ accessed through APIs. Consequently, throughout this paper,
+ the terms “function” and “API” will be used interchangeably,
+ both referring to tools within the Tool-Augmented LLMs
+ paradigm.
+ The process of tool learning typically consists of a four
+stage process: task planning, tool selection, tool invocation,
+ and response generation [11]. LLMs begin by analyzing user
+ queries and decomposing them into actionable sub-tasks. The
+ tool selection phase then identifies the most appropriate tools
+ to address these sub-tasks. Afterward, the tool invocation
+ phase retrieves the necessary parameters from the inputs and
+ executes the corresponding functions. Finally, in the response
+ generation phase, the LLM synthesizes the outputs from these
+ external tools to generate a coherent, context-aware response
+ for the user. This structured process has been widely adopted
+ in numerous studies on Tool-Augmented LLMs [12], [14],
+Action Engine
+ Text-to-Workflow
+ A. Text-to-Workflow
+ Func Repo
+ Developer
+ Query
+ Func 
+Identifier
+ Workflow
+ Generator
+ Sub-tasks DAG
+ Response
+ Application
+ API 
+EndPoint
+ API Request
+ Gateway
+ LLM
+ Engine
+ DAG
+ Compiler
+ Workflow
+ Compiled
+ File
+ Endpoint Registration
+ Execute Workflow
+ Endpoint Register
+ Response
+ Workflow
+ Orchestrator
+ Fig. 2: The architecture of Action Engine system
+ [15], [16], showcasing the significant potential of LLMs when
+ combined with external tools.
+ B. Automatic Workflow Generation
+ Although the concept of automatic workflow generation has
+ been explored in various studies, the specific application of
+ LLMs in this area remains relatively underdeveloped.
+ FlowMind [17], which utilizes LLMs to create Python
+based workflows. FlowMind adeptly maps user requests to
+ f
+ inancial APIs, enabling dynamic generation and modification
+ of workflows based on real-time user feedback. Similarly, Aut
+oFlow has extensively explored the conceptual generation of
+ workflows, employing both in-context learning and fine-tuning
+ approaches enhanced by reinforcement learning [8]. These
+ methods represent significant strides in integrating LLMs with
+ automated workflow systems.
+ III. DESIGN AND ARCHITECTURE OF ACTION ENGINE
+ This section describes the design of the Action Engine.
+ To address the challenge of language and platform depen
+dency in automatic workflow generation, our methodology
+ integrates the Directed Acyclic Graph (DAG) concept with
+ the standard Tool-Augmented LLMs procedure. We begin by
+ defining nodes, where each node represents a sub-task derived
+ from the user query, and identifying suitable APIs for this
+ sub-task. The edges between nodes are managed through a
+ data dependency approach to ensure correct data flow. Finally,
+ we use a platform-specific configuration compiler to adapt
+ the generated DAG into a functional workflow. This method
+ ensures not only the automated generation of workflows for
+ FaaS but also maintains language and platform agnosticism,
+ avoiding common pitfalls associated with language-specific or
+ platform-dependent workflows.
+ The overall architecture of Action Engine is shown in
+ Figure 2. Action Engine consists of the following modules:
+ 1) Text-to-Workflow: Transforming the user’s query into an
+ executable workflow configuration.
+ 2) Workflow Execution: Executing the workflow that gen
+erated by text-to-workflow module. Each workflow has
+ its own API endpoint for the user to call.
+ This section explains the design and technique for generat
+ing the workflow from the user query in the Text-to-Workflow
+ module. We design this module to have five components:
+ FaaS
+ Engine
+ Workflow Execution
+ • LLMEngine: The LLM Engine processes internal prompts
+ generated by the Func Selector and Workflow Generator.
+ The architecture is designed to support comparable LLMs.
+ We employ in-context learning [3] over fine-tuning due to
+ the dynamic nature of FaaS, where workflows are often
+ variable and tasks are highly diverse. Fine-tuning models
+ typically require retraining on a fixed dataset, which can
+ be inefficient and inflexible for the continuously changing
+ environment of FaaS.
+ • Func Repo: The Function Repository (Func Repo) is the
+ centralized information storage for all available functions
+ used within the system. Functions’ information, including
+ input and output parameters and functional descriptions, are
+ stored as vector embeddings to facilitate efficient retrieval
+ and selection during workflow generation. By embedding
+ functions in a vector database, the system enables rapid sim
+ilarity searches, significantly improving the efficiency of the
+ function identification process (see more in Section IV-B).
+ • Func Identifier: The Function Identifier (Func Identifier)
+ is responsible for finding the functions for each sub-task
+ within the workflow. These functions will be formed as the
+ nodes of the DAG that represent the workflow. This module
+ operates in two key phases: Task Planning (Section IV-A).
+ and Function Selection (Section IV-B).
+ • Workflow Generator: The Workflow Generator is designed
+ to create the data dependencies for each sub-task in the
+ workflow, which are then used to construct the edges of the
+ DAG. This module operates through three key processes:
+ Topological Ordering (Section V-A), Parameter Classifi
+cation(Section V-B), and Data Dependency Construction
+ (Section V-C).
+ • Platform-Specific DAG Compiler: This component takes
+ the generated conceptual DAG from the Workflow Generator
+ and converts it into a specific configuration for the target
+ FaaS platform. This component achieves one of the primary
+ objectives, which is language and platform independence
+ from workflow generation. The conceptual DAG is stored
+ in a language-neutral format, allowing it to be compiled
+ into configurations compatible with different FaaS platforms
+ by different DAG compilers. By enabling this platform
+specific compilation, the system provides flexibility and
+ broad applicability, allowing workflows to be executed
+ across various cloud environments without requiring manual
+ reconfiguration. This component ensures that the generated
+ workflows are not tied to a single platform, thus supporting
+ the accessibility of a wide range of cloud-native applica
+tions.
+ B. Workflow Execution
+ To execute the generated workflow, we design the workflow
+ execution module with three generic components:
+• Gateway: The gateway is designed to provide the API
+ endpoint for executing the generated workflow.
+ • WorkflowOrchestrator: The generic workflow orchestrator
+ is responsible for orchestrating multiple sub-tasks that are
+ executed via the FaaS engine.
+ • FaaS Engine: The FaaS engine is a generic serverless
+ platform that uses the FaaS model to allow developers to run
+ a function code as a scalable service with the least effort.
+ Once the DAG compiler generates the platform-specific
+ workflow configuration, it registers the workflow to the or
+chestrator and the gateway to prepare the necessary data
+ and resources. Next, the gateway creates an API endpoint
+ and returns it back to the developer for integration with the
+ developer’s application.
+ To execute the workflow, the application calls the API
+ endpoint with the request data (user input). Upon receiving
+ the workflow request, the gateway forwards the workflow
+ execution request to the workflow executor. The workflow
+ is segmented into multiple sub-tasks for execution within
+ the FaaS engine. After completing the workflow, whether
+ successful or not, the orchestrator sends the result back to
+ the gateway, which in turn forwards it back to the API caller.
+ IV. FUNC IDENTIFIER
+ A. Task Planner
+ Task Planning involves breaking down user queries into
+ actionable sub-tasks. This is achieved using in-context learning
+ with carefully selected examples to ensure the appropriate
+ granularity of task decomposition relative to the available
+ functions in the repository. A LLM function LLM plan that
+ maps queries q ∈ Q to their corresponding sets of subtasks S
+ S =LLM
+ plan(q) = {s1,s2,...,sn}
+ (1)
+ The function LLM plan submits a query to the LLM that
+ includes a collection of example queries and their correspond
+ing decompositions to create each subtask si. Therefore, the
+ LLM can apply the same decomposition principles to a new
+ query to convert complex queries into manageable, executable
+ actions, facilitating the efficient execution of tasks.
+ B. Function Selection
+ Following the Task Planning phase, the Function Selection
+ is responsible for pairing each sub-task with the most relevant
+ function from the Func Repo. Function Selection is conducted
+ for each sub-task, where the system retrieves the top-k most
+ relevant functions from the Func Repo based on cosine simi
+larity between the sub-task and the function embeddings. This
+ ensures that the functions selected are semantically aligned
+ with the intended task, resulting in accurate and effective
+ function-task pairing.
+ For each subtask si, the algorithm selects the top-k functions
+ F1..k = {f1,f2,...,fk} with the highest cosine similarity
+ scores.
+ Subsequently, the LLM is utilized to select the most suitable
+ function from the top-k retrieved functions. The LLM eval
+uates the semantic alignment and contextual appropriateness
+ of each function relative to the subtask, ensuring the closest
+ match. The final function f∗
+ i chosen by the LLM is:
+ f∗
+ i = LLM
+ select(q, si, F1..k)
+ (2)
+ The output of this process is a set of pairs representing nodes
+ in the workflow, where each node (si,f∗
+ i) consists of a subtask
+ si and its corresponding selected function f∗
+ i . This set of pairs
+ N is then used as the nodes to construct the workflow DAG.
+ For simplification, we create node ni that refers to (si,f∗
+ i),
+ therefore, N can now be defined as:
+ N ={ni |ni =(si,f∗
+ i)}
+ V. WORKFLOW GENERATOR
+ (3)
+ The Workflow Generator module is designed to construct
+ the data dependency between each sub-task of the workflow as
+ edges to build the workflow model in DAG. Once the Function
+ Selection creates the set of nodes N, the Workflow Generator
+ performs topological ordering on the set of nodes N to ensure
+ the correct execution sequence. It then classifies each input pa
+rameter of sub-tasks within the workflow to determine whether
+ it depends on a direct user input or an output generated by
+ a previously executed node. The classification result is used
+ for constructing the data dependency and combining the data
+ dependency and sub-task information into the workflow model
+ in DAG.
+ A. Topological Ordering
+ Nodes in N are ordered to ensure that sub-tasks are executed
+ only after their dependencies are resolved. This ordering is
+ achieved by passing the list of sub-tasks to a LLM, which
+ semantically arranges the nodes. This ensures that no node ni
+ is executed before its required preceding nodes are completed.
+ B. Parameter Classification
+ Each node ni has input parameters {pi1,pi2,...,pik}. Pa
+rameter Classification classifies each parameter pij as either a
+ direct user input or an output from a previous sub-task. Let O
+ denote the set of semantic descriptions of output parameters
+ from the previously executed nodes. The classification of
+ parameter pij of node ni considers both pij and O. The result
+ is the type tij:
+ tij = LLM
+ classify(pij,O)
+ = Input
+ if from direct user inputs
+ Output(nk) if from nk with k < i
+ C. Data Dependency Construction
+ (4)
+ (5)
+ For each parameter pij classified as an output of a previous
+ node, Action Engine create an edge (nout,nin) as a data
+ dependency in dataflow graph DF:
+ (6)
+ DF ={(ns,ni) | tij = Input}
+ ∪{(nk,ni) | tij = Output(nk)}
+ We create the node ns to represent the starting node of this
+ workflow to hold the direct user inputs. For the parameter pij
+that was classified as an input, Action Engine creates the edge
+ form ns to ni. Otherwise, the system creates the edge from
+ nk to ni where the parameter pij is classified as an output
+ of nk. This process ensures the data flow reflects correct data
+ dependencies, resulting in a valid workflow structure that is
+ executable without errors. Finally, we create the result DAG
+ by combining both nodes N and data flow DF:
+ DAG=combine(N,DF)
+ VI. EVALUATION
+ A. Experimental Setup
+ (7)
+ For system testing and evaluation, we employed OpenAI’s
+ GPT-3.5 model, which was selected for its advanced natural
+ language understanding and task decomposition capabilities.
+ Additionally, we utilized the all-MiniLM-L6-v2 model to em
+bed function representations, ensuring a high level of semantic
+ relevance in matching functions to tasks.
+ The implementation of the Action Engine was carried out
+ in Python. Argo Workflow [4] was used as the workflow
+ orchestrator, and Knative [5] served as the Function as a
+ Service (FaaS) engine. Consequently, the DAG Compiler was
+ required to compile DAG semantics into an Argo-compatible
+ configuration in YAML format.
+ B. Dataset
+ To thoroughly evaluate the performance of Action Engine,
+ we developed a custom dataset comprising workflows of
+ varying complexity levels. This dataset was manually con
+structed to simulate a range of complex scenarios in FaaS
+ environments, ensuring the evaluation covers different aspects
+ of workflow generation.
+ The dataset consists of 30 workflows, each categorized into
+ one of three complexity levels:
+ • Easy: These workflows contain 1-2 nodes, representing
+ straightforward tasks that require minimal orchestration.
+ • Intermediate: This category includes workflows with 3
+5 nodes, introducing moderate complexity and requiring
+ more intricate function selection and data dependency
+ management.
+ • Hard: The most complex workflows in this set consist of
+ 6-10 nodes, demanding advanced orchestration and data
+ f
+ low management across multiple functions.
+ Given the small size of the dataset, we took additional steps
+ to ensure the robustness of our evaluation. To mitigate the
+ impact of randomness inherent in the generation process, we
+ generated each workflow five times for every configuration of
+ Action Engine. Consequently, for each evaluation, a total of
+ 150 YAML files were generated, which were then compared
+ against the ground truth to assess the accuracy of the workflow
+ generation.
+ C. Effectiveness of Action Engine
+ To assess the effectiveness of our proposed system, we
+ designed a series of experiments under different configura
+tions. These experiments aimed to isolate and evaluate the
+ contribution of each component to the system’s overall per
+formance in generating accurate FaaS workflows. Specifically,
+ we examined the following configurations:
+ • Setting 1- AE: that is a full-feature Action Engine.
+ • Setting 2- AE w/o C: that is an Action Engine without the
+ DAG compiler to remove the language-neutral feature.
+ • Setting 3- AE w/o WG&C: that is an Action Engine with
+out the DAG compiler and workflow generator to remove
+ language-neutral and data dependency management features.
+ To substitute the removed components, we utilize OpenAI’s
+ GPT-4o model to generate Argo-based workflows in YAML
+ format. The generated workflows are evaluated using three key
+ metrics: correctness of function selection, pairwise topological
+ ordering, and data dependency, along with an overall correct
+ness metric that averages these three measures. These metrics
+ assess the proportion of correctly predicted components rela
+tive to the ground truth, providing a comprehensive evaluation
+ of the workflow YAML generated by all three versions of
+ Action Engine.
+ Before proceeding with the evaluation, it is essential to
+ address the syntactic integrity of the generated workflows. Fur
+ther evaluation cannot be conducted if a workflow is produced
+ with syntactic errors. Such errors indicate a fundamental issue
+ in generating executable workflow, rendering the workflow
+ inoperative within a FaaS environment. Therefore, workflows
+ with such errors are assigned an accuracy score of zero.
+ D. Results and Overall Analysis
+ The overall evaluation highlights the significant contribu
+tions of both the DAG Compiler and Workflow Generator,
+ improving the correctness of workflows by up to 20%. The
+ DAGCompiler is pivotal in minimizing hallucinations in large
+ language models (LLMs), which can lead to incorrect func
+tion selection and task orchestration, especially in complex
+ workflows. Unlike LLMs, the DAG Compiler ensures that
+ the generated workflow YAML is structured and contextually
+ accurate based on the given DAG. This impact is especially
+ pronounced in intermediate and hard workflows, where pre
+cise task sequencing and data dependency management are
+ essential.
+ Similarly, the Workflow Generator plays a vital role in
+ improving workflow correctness by enhancing the accuracy
+ of topological ordering and data dependency management.
+ The significant performance improvements from Setting 3 to
+ Setting 2, where only the Workflow Generator is included,
+ underscore its importance in generating correct workflows,
+ particularly in intermediate and hard scenarios. The Workflow
+ Generator effectively mitigates the adverse effects of LLM
+ hallucinations by orchestrating tasks and dependencies with
+ greater precision.
+ Notably, while our system utilizes an inferior model (GPT
+3.5) compared to the baseline LLM (GPT-4o), it achieves bet
+ter accuracy in workflow generation across almost all evaluated
+ metrics. This highlights the effectiveness of incorporating the
+ DAG Compiler, which provides language neutrality, and the
+ Workflow Generator, which manages data dependencies. Thes

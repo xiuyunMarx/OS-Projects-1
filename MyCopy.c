@@ -19,7 +19,7 @@ void copy(FILE *src, FILE *dest, const size_t buffer_size) {
 
     // Check for read error.
     if (ferror(src)) {
-        perror("Error reading source file");
+        perror("Error reading source file--------------****");
         exit(EXIT_FAILURE);
     }
 }

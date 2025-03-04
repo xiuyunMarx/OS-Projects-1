@@ -15,13 +15,13 @@ int main(int argc, char *argv[]) {
     struct timespec start, end;
     double total_time = 0.0;
 
-    char pathToProgram[50] = "./executive/";
+    char pathToProgram[200] = "/home/xyma/MarxFiles/Homework/project1/";
     // Append the program name to the "./" directory
     strcat(pathToProgram, argv[1]);
     // printf("Executable path: %s\n", pathToProgram);
 
     // Benchmark the program 10 times.
-    for (int i = 0; i < 20; i++) {
+    for (int i = 1; i < 102; i++) {
         if (clock_gettime(CLOCK_MONOTONIC, &start) == -1) {
             fprintf(stderr, "Error getting start time\n");
             exit(1);
@@ -39,10 +39,12 @@ int main(int argc, char *argv[]) {
             // execl: first argument is the executable path,
             // second argument is conventionally the program name,
             // followed by parameters.
-            execl(pathToProgram, argv[1], "input.txt", "output.txt", numStr, (char *)NULL);
+            execl(pathToProgram, argv[0],  "/home/xyma/MarxFiles/Homework/project1/input.txt",
+                "/home/xyma/MarxFiles/Homework/project1/benchMark/output.txt", numStr, (char *)NULL);
             perror("execution failed in benchmark");
             exit(1);
         } else { // Parent process
+
             wait(NULL);
             if (clock_gettime(CLOCK_MONOTONIC, &end) == -1) {
                 fprintf(stderr, "Error getting end time\n");
@@ -51,7 +53,7 @@ int main(int argc, char *argv[]) {
 
             double elapsed = (end.tv_sec - start.tv_sec) +
                              (end.tv_nsec - start.tv_nsec) / 1e9;
-            printf("Iteration %d elapsed time: %f seconds\n", i, elapsed);
+            printf("with block size = %d Iteration %d elapsed time: %f seconds\n",10*i, i, elapsed);
             total_time += elapsed;
         }
     }

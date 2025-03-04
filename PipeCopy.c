@@ -9,30 +9,27 @@
 
 void readinFile(const char *srcName, int pipefd[2], const size_t bufferSize) {
     FILE *src = fopen(srcName, "rb");
-    if(src == NULL){
+    if (src == NULL) {
         perror("Error opening source file");
         exit(EXIT_FAILURE);
     }
-
+    // Close the read end in the reader process.
     close(pipefd[0]);
-    //close the read end of the pipe
 
     char buffer[bufferSize];
     size_t bytesRead;
 
-    while((bytesRead = fread(buffer, 1, sizeof(buffer), src) ) > 0){
-        if(write(pipefd[1],buffer, bytesRead) != (ssize_t)bytesRead){
+    while ((bytesRead = fread(buffer, 1, sizeof(buffer), src)) > 0) {
+        if (write(pipefd[1], buffer, bytesRead) != (ssize_t)bytesRead) {
             perror("Error writing to pipe");
             fclose(src);
             exit(EXIT_FAILURE);
         }
-    } // write in to the pipe
-
+    }
     
     fclose(src);
     // Close the write end to signal end-of-file.
     close(pipefd[1]);
-
     exit(EXIT_SUCCESS);
 }
 
@@ -42,77 +39,76 @@ void writeFile(const char *destName, int pipefd[2], const size_t bufferSize) {
         perror("Error opening destination file");
         exit(EXIT_FAILURE);
     }
-
-    // Close unused write end in the writer process.
+    
+    // Close the write end
     close(pipefd[1]);
 
     char buffer[bufferSize];
-    size_t bytesRead;
+    ssize_t bytesRead;  // read returns ssize_t
     while ((bytesRead = read(pipefd[0], buffer, sizeof(buffer))) > 0) {
-        if (fwrite(buffer, 1, bytesRead, dest) != bytesRead) {
+        if (fwrite(buffer, 1, bytesRead, dest) != (size_t)bytesRead) {
             perror("Error writing to destination file");
             fclose(dest);
             exit(EXIT_FAILURE);
         }
     }
-
+    if (bytesRead < 0) {
+        perror("Error reading from pipe");
+        fclose(dest);
+        exit(EXIT_FAILURE);
+    }
+    
     fclose(dest);
     close(pipefd[0]);
-
     exit(EXIT_SUCCESS);
 }
 
 int main(int argc, char *argv[]){
-    if (argc < 3) {
-        fprintf(stderr, "Usage: %s <source_file> <destination_file>\n", argv[0]);
+    if (argc != 3 && argc != 4) {
+        fprintf(stderr, "Usage: %s <source_file> <destination_file> [buffer size]\n", argv[0]);
         exit(EXIT_FAILURE);
-    }else if(argc > 4){
-        fprintf(stderr, "Usage: %s <source_file> <destination_file> <buffer size>\n", argv[0]);
     }
 
     size_t bufferSize;
-    if(argc == 4){
+    if (argc == 4) {
         bufferSize = atoi(argv[3]);
-    }else {
+    } else {
         bufferSize = DEFAULT_BUFF_SIZE;
     }  // init the buffer size
 
-
-
     int pipefd[2]; // pipefd[0]: read end, pipefd[1]: write end
-
     if (pipe(pipefd) < 0) {
         perror("Pipe creation failed");
         exit(EXIT_FAILURE);
     }
 
-    // Fork the first child for reading from source file.
-    pid_t pid_read = fork();
-    pid_t pid_write = fork();
-    if (pid_read < 0) {
+    // Fork the reader child.
+    pid_t pid_reader = fork();
+    if (pid_reader < 0) {
         perror("Fork failed for reader process");
         exit(EXIT_FAILURE);
     }
-    if (pid_read == 0) {
+    if (pid_reader == 0) {
         readinFile(argv[1], pipefd, bufferSize);
     }
-
-    // Fork the second child for writing to destination file.
-    if (pid_write < 0) {
+    
+    // Fork the writer child.
+    pid_t pid_writer = fork();
+    if (pid_writer < 0) {
         perror("Fork failed for writer process");
         exit(EXIT_FAILURE);
     }
-    if (pid_write == 0) {
+    if (pid_writer == 0) {
         writeFile(argv[2], pipefd, bufferSize);
     }
-
-    // Wait for both child processes to complete.
-    wait(NULL);
-    wait(NULL);   
-
-    // Parent process: Close both ends of the pipe as they're not used here.
+    
+    // Parent process: Close both ends of the pipe as they are not used here.
     close(pipefd[0]);
     close(pipefd[1]);
+
+    // Wait for both child processes to finish.
+    wait(NULL);
+    wait(NULL);
 
     return EXIT_SUCCESS;
 }
