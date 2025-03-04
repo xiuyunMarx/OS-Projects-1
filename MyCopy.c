@@ -1,42 +1,59 @@
 #include <stddef.h>
 #include <stdio.h>
-#include "stdlib.h"
+#include <stdlib.h>
+#include <stdbool.h>
 
-void copy(FILE *src, FILE *dest){
-    char inputBuffer[10];
-    size_t readBytes;
-    size_t block_size = 1,block_count = 1;
-    while((readBytes = fread(inputBuffer,block_size,block_count, src))){
-        if(readBytes > 0){
-            fwrite(inputBuffer, block_size, readBytes, dest);
-        }else { 
-            //no complete block read, read in char
-            char ch;
-            ch = fgetc(src);
-            while(ch != EOF){
-                fputc(ch, dest);
-                ch = fgetc(src);
-            }
-            fputc(ch, dest);
-            break;
+#define BAFFER_DEFAULT_SIZE 64
+
+void copy(FILE *src, FILE *dest, const size_t buffer_size) {
+    char inputBuffer[buffer_size];
+    size_t bytesRead;
+
+    // Read data in chunks and write to the destination file.
+    while ((bytesRead = fread(inputBuffer, 1, sizeof(inputBuffer), src)) > 0) {
+        if (fwrite(inputBuffer, 1, bytesRead, dest) != bytesRead) {
+            perror("Error writing to destination file");
+            exit(EXIT_FAILURE);
         }
     }
-    
-    return ;
+
+    // Check for read error.
+    if (ferror(src)) {
+        perror("Error reading source file");
+        exit(EXIT_FAILURE);
+    }
 }
-int main(int argc, char *argv[]){
-    FILE *src, *dest;
-    src = fopen(argv[1], "r");
-    dest = fopen(argv[2], "w+");
-    if(src == NULL){
-        printf("File open error : file %s", argv[1]);
+
+int main(int argc, char *argv[]) {
+    if(argc > 4){
+        fprintf(stderr, "argument error, with usage: %s <source_file> <destination_file> <buffer size>\n", argv[0]);
+        exit(1);
+    }else if(argc < 3){
+        fprintf(stderr, "argument error, with usage: %s <source_file> <destination_file>\n", argv[0]);
         exit(1);
     }
-    if(dest ==NULL){
-        printf("File open error : file %s", argv[2]);
-        exit(1);
-    }    
-    copy(src, dest);
+    
+    FILE *src = fopen(argv[1], "rb");
+    if (src == NULL) {
+        perror("Error opening source file");
+        exit(EXIT_FAILURE);
+    }
+
+    FILE *dest = fopen(argv[2], "wb");
+    if (dest == NULL) {
+        perror("Error opening destination file");
+        fclose(src);
+        exit(EXIT_FAILURE);
+    }
+    size_t buffer_size;
+    if(argc == 4){
+        buffer_size = atoi(argv[3]);
+    }else {
+        buffer_size = BAFFER_DEFAULT_SIZE;
+    }
+
+    copy(src, dest,buffer_size);
+    
     fclose(src);
     fclose(dest);
     return 0;

@@ -1,0 +1,134 @@
+d on the forward pass of the last token and all the cached
+ context from previous tokens in the sequence. Given the lack
+ of compute parallelism, this phase tends to be more memory
+ bandwidth and capacity bound, despite state-of-the-art batching.
+ Running both phases on the same machine often leads to
+ inconsistent end-to-end latencies due to the arbitrary batching
+ of prompt and token phases. Due to these challenges, services
+ need to over-provision expensive GPUs to meet tight inference
+ service level objectives (SLOs) for interactive applications. At
+ the same time, cloud service providers (CSPs) are having to
+ build a lot of new datacenters to meet the GPU demand, and
+ are running into a power wall [19].
+ The industry continues to release new computationally
+ powerful GPUs, each much more power hungry and expensive
+ than the last. However, as shown in Table I, the high-bandwiifferent, better
+suited hardware for each phase. To realize such a setup, the
+ cached context from the prompt computation needs to be
+ communicated over from the prompt processing machine to the
+ token generation machine at low latency. We implement these
+ transfers in an optimized manner over the back-end Infiniband
+ interconnects avaialble in datacenters today, allowing us to
+ increase efficiency without any perceived performance loss.
+ With Splitwise, we design clusters optimized for cost,
+ throughput, and power, using production traces of LLM
+ inference requests [4]. Given the diverging memory and
+ compute scaling rates across GPU generations, we also evaluate
+ different GPUs and power caps for the different inference
+ phases. This allows us to target better performance per dollar
+ (Perf/$) for users, and better performance per watt (Perf/W)
+ for CSPs. Additionally, users can target older GPUs, which
+ are likely more readily available to them.
+ We show that Splitwise-based LLM inference clusters can
+ achieve 1.4× higher throughput at 20% lower cost than existing
+ clusters. Alternatively, they can deliver 2.35× more throughput
+ with the same cost and power budgets.
+ Summary. We make the following contributions:
+ 1) An extensive characterization of the differences in the
+ execution and utilization patterns of the prompt and token
+ generation phases in LLM inference on the NVIDIA A100
+ and H100 GPUs using production traces.
+ 2) Splitwise, our technique for optimized utilization of avail
+able hardware, which splits the prompt computation and
+ token generation phases onto separate machines.
+ 3) A design exploration of homogeneous and heterogeneous
+ cluster deployments with Splitwise to optimize the overall
+ cost, request throughput, and provisioned power.
+ 4) An evaluation of the systems designed with Splitwise using
+ production traces.
+ II. BACKGROUND
+ A. Large Language Models
+ Modern LLMs are based on transformers. Transformer
+ models use attention [77] and multi-layer-perceptron layers to
+ understand the inputs and generate an output, respectively.
+ Transformer-based LLMs include encoder-only [36], [54],
+ decoder-only [67], [69], [71], and encoder-decoder [70] models.
+ Generative LLMs, the focus of this paper, are usually either
+ decoder-only, or encoder-decoder models.
+ B. Generative LLM inference phases
+ Figure 1 shows an example of generative LLM inference.
+ Once the prompt query is received, all the input tokens are
+ computed in parallel, within a single iteration, to generate the
+ f
+ irst token. We call this the prompt processing phase. The
+ context generated from the attention layers during the prompt
+ computation is saved in the key-value (KV) cache, since it
+ Prompt phase
+ LLM 
+iteration 1
+ LLM 
+iteration 2
+ KV 
+cache
+ LLM 
+iteration 3
+ LLM 
+iteration 4
+ KV 
+cache
+ Is tomato a 
+fruit?
+ Yes it is
+ KV 
+cache
+ Fig. 1: An LLM inference example.
+ EOS
+ Metric
+ Importance to user
+ End-to-end (E2E) latency
+ Time to first token (TTFT)
+ Time between tokens (TBT)
+ Throughput
+ Total query time that the user sees
+ How quickly user sees initial response
+ Average token streaming latency
+ Requests per second
+ TABLE II: Performance metrics for LLMs.
+ is needed for all the future token generation iterations. After
+ the first token is generated, the following tokens only use
+ the last generated token and the KV-cache as inputs to the
+ forward pass of the model. This makes the subsequent token
+ generation more memory bandwidth and capacity intensive
+ than the computationally heavy prompt phase.
+ C. Performance metrics for LLMs
+ Prior work has proposed three main metrics for LLM
+ inference: end-to-end (E2E) latency, time to first token (TTFT),
+ and throughput. We add another latency metric: time between
+ tokens (TBT), to track the online streaming throughput of the
+ tokens as they are generated serially. Table II summarizes the
+ key performance metrics that we consider in this work.
+ Generative LLMs may be used for a variety of tasks with
+ different kinds of SLOs. For batch tasks (e.g., summariza
+tion), TTFT or TBT latency metrics are less important than
+ throughput. On the other hand, for latency-sensitive tasks (e.g.,
+ conversational APIs), TTFT and TBT are the more important
+ metrics with tighter SLOs.
+ D. Batching of requests
+ Inference requests can be batched together for higher
+ throughput. Several prior works have explored batching [23],
+ [81]. Figure 2 shows the timelines for inference with three
+ common batching mechanisms. The default mechanism only
+ batches at the request-level (Figure 2(a)). In this case, ready
+ requests are batched together, but all the forward passes for
+ these requests are completed before any other requests are run.
+ Since requests can have long token generation phases, this
+ can lead to long wait times for requests arriving in between,
+ causing high TTFT and high E2E latencies. An optimization is
+ continuous batching [81] (Figure 2(b)). In this case, scheduling
+ decisions are made before each forward pass of the model.
+ However, any given batch comprises either only of requests
+ in their prompt phase or only requests in token phase. Prompt
+ phase is considered more important since it impacts TTFT.
+ Hence, a waiting prompt can preempt a token phase. Although
+ this leads to shorter TTFT, it can substantially increase the tail
+ 
