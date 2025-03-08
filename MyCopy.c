@@ -1,11 +1,12 @@
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdbool.h>
 
 #define BAFFER_DEFAULT_SIZE 64
 
 void copy(FILE *src, FILE *dest, const size_t buffer_size) {
+    // printf("current buffer size: %d\n", buffer_size);
     char inputBuffer[buffer_size];
     size_t bytesRead;
 
@@ -25,14 +26,14 @@ void copy(FILE *src, FILE *dest, const size_t buffer_size) {
 }
 
 int main(int argc, char *argv[]) {
-    if(argc > 4){
+    if (argc > 4) {
         fprintf(stderr, "argument error, with usage: %s <source_file> <destination_file> <buffer size>\n", argv[0]);
         exit(1);
-    }else if(argc < 3){
+    } else if (argc < 3) {
         fprintf(stderr, "argument error, with usage: %s <source_file> <destination_file>\n", argv[0]);
         exit(1);
     }
-    
+
     FILE *src = fopen(argv[1], "rb");
     if (src == NULL) {
         perror("Error opening source file");
@@ -46,14 +47,14 @@ int main(int argc, char *argv[]) {
         exit(EXIT_FAILURE);
     }
     size_t buffer_size;
-    if(argc == 4){
+    if (argc == 4) {
         buffer_size = atoi(argv[3]);
-    }else {
+    } else {
         buffer_size = BAFFER_DEFAULT_SIZE;
     }
 
-    copy(src, dest,buffer_size);
-    
+    copy(src, dest, buffer_size);
+
     fclose(src);
     fclose(dest);
     return 0;
